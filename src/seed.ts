@@ -24,14 +24,9 @@ async function seed() {
   ];
 
   for (const u of users) {
-    const exists = await userRepo.findOne({ where: { username: u.username } });
-    if (!exists) {
-      const hashed = await bcrypt.hash(u.password, 10);
-      await userRepo.save(userRepo.create({ ...u, password: hashed }));
-      console.log(`Created user: ${u.username}`);
-    } else {
-      console.log(`User already exists: ${u.username}`);
-    }
+    const hashed = await bcrypt.hash(u.password, 10);
+    await userRepo.update({ username: u.username }, { password: hashed });
+    console.log(`Updated password for: ${u.username}`);
   }
 
   await AppDataSource.destroy();

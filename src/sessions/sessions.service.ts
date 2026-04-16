@@ -1,8 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Session } from './session.entity';
-import dayjs from 'dayjs';
 
 @Injectable()
 export class SessionsService {
@@ -11,79 +10,70 @@ export class SessionsService {
     private sessionsRepository: Repository<Session>,
   ) {}
 
-  async startSession(userId: number): Promise<Session> {
-    const active = await this.sessionsRepository.findOne({
-      where: { userId, endTime: null },
-    });
+  async addEntry(
+    userId: number,
+    date: string,
+    startTime: string,
+    endTime: string,
+  ): Promise<Session> {
+    const [startH, startM] = startTime.split(':').map(Number);
+    const [endH, endM] = endTime.split(':').map(Number);
 
-    if (active) {
-      throw new BadRequestException('You already have an active session');
+    let durationMinutes = endH * 60 + endM - (startH * 60 + startM);
+    if (durationMinutes < 0) durationMinutes += 24 * 60;
+
+    if (durationMinutes === 0) {
+      throw new BadRequestException('Start and end time cannot be the same');
     }
 
     const session = this.sessionsRepository.create({
       userId,
-      startTime: new Date(),
-      endTime: null,
+      date,
+      startTime,
+      endTime,
+      durationMinutes,
     });
 
     return this.sessionsRepository.save(session);
   }
 
-  async endSession(userId: number): Promise<Session> {
-    const active = await this.sessionsRepository.findOne({
-      where: { userId, endTime: null },
+  async getEntries(userId: number): Promise<Session[]> {
+    return this.sessionsRepository.find({
+      where: { userId },
+      order: { date: 'DESC', startTime: 'DESC' },
     });
-
-    if (!active) {
-      throw new BadRequestException('No active session found');
-    }
-
-    active.endTime = new Date();
-    return this.sessionsRepository.save(active);
   }
 
-  async getActiveSession(userId: number): Promise<Session | null> {
-    return this.sessionsRepository.findOne({
-      where: { userId, endTime: null },
-    });
+  async deleteEntry(userId: number, id: number): Promise<void> {
+    await this.sessionsRepository.delete({ id, userId });
   }
 
   async getStats(userId: number) {
-    const now = dayjs();
+    const entries = await this.sessionsRepository.find({
+      where: { userId },
+    });
 
-    const todayStart = now.startOf('day').toDate();
-    const todayEnd = now.endOf('day').toDate();
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
 
-    const weekStart = now.startOf('week').toDate();
-    const weekEnd = now.endOf('week').toDate();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay());
+    const weekStartStr = weekStart.toISOString().split('T')[0];
 
-    const monthStart = now.startOf('month').toDate();
-    const monthEnd = now.endOf('month').toDate();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+      .toISOString()
+      .split('T')[0];
 
-    const [daily, weekly, monthly] = await Promise.all([
-      this.sessionsRepository.find({
-        where: { userId, startTime: Between(todayStart, todayEnd) },
-      }),
-      this.sessionsRepository.find({
-        where: { userId, startTime: Between(weekStart, weekEnd) },
-      }),
-      this.sessionsRepository.find({
-        where: { userId, startTime: Between(monthStart, monthEnd) },
-      }),
-    ]);
+    let daily = 0;
+    let weekly = 0;
+    let monthly = 0;
 
-    return {
-      daily: this.calcTotal(daily),
-      weekly: this.calcTotal(weekly),
-      monthly: this.calcTotal(monthly),
-    };
-  }
+    entries.forEach((e) => {
+      if (e.date === todayStr) daily += e.durationMinutes;
+      if (e.date >= weekStartStr) weekly += e.durationMinutes;
+      if (e.date >= monthStart) monthly += e.durationMinutes;
+    });
 
-  private calcTotal(sessions: Session[]): number {
-    return sessions.reduce((total, session) => {
-      const end = session.endTime ? new Date(session.endTime) : new Date();
-      const ms = end.getTime() - new Date(session.startTime).getTime();
-      return total + ms;
-    }, 0);
+    return { daily, weekly, monthly };
   }
 }
