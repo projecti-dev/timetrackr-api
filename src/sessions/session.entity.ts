@@ -18,11 +18,17 @@ export class Session {
   @Column()
   userId!: number;
 
-  @Column({ type: 'timestamp' })
-  startTime!: Date;
+  @Column({ type: 'date' })
+  date!: string;
 
-  @Column({ type: 'timestamp', nullable: true })
-  endTime!: Date | null;
+  @Column({ type: 'time' })
+  startTime!: string;
+
+  @Column({ type: 'time' })
+  endTime!: string;
+
+  @Column({ type: 'int' })
+  durationMinutes!: number;
 
   @CreateDateColumn()
   createdAt!: Date;

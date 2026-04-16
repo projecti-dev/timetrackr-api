@@ -1,25 +1,46 @@
-import { Controller, Post, Get, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { SessionsService } from './sessions.service';
 import { JwtAuthGuard } from '../auth/jwt.guard';
+import { IsString, IsNotEmpty } from 'class-validator';
+
+class AddEntryDto {
+  @IsString() @IsNotEmpty() date!: string;
+  @IsString() @IsNotEmpty() startTime!: string;
+  @IsString() @IsNotEmpty() endTime!: string;
+}
 
 @Controller('sessions')
 @UseGuards(JwtAuthGuard)
 export class SessionsController {
   constructor(private sessionsService: SessionsService) {}
 
-  @Post('start')
-  async start(@Request() req: any) {
-    return this.sessionsService.startSession(req.user.sub);
+  @Post('entry')
+  async addEntry(@Request() req: any, @Body() body: AddEntryDto) {
+    return this.sessionsService.addEntry(
+      req.user.sub,
+      body.date,
+      body.startTime,
+      body.endTime,
+    );
   }
 
-  @Post('end')
-  async end(@Request() req: any) {
-    return this.sessionsService.endSession(req.user.sub);
+  @Get('entries')
+  async getEntries(@Request() req: any) {
+    return this.sessionsService.getEntries(req.user.sub);
   }
 
-  @Get('active')
-  async active(@Request() req: any) {
-    return this.sessionsService.getActiveSession(req.user.sub);
+  @Delete('entry/:id')
+  async deleteEntry(@Request() req: any, @Param('id') id: string) {
+    return this.sessionsService.deleteEntry(req.user.sub, parseInt(id));
   }
 
   @Get('stats')
