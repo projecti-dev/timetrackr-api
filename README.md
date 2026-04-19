@@ -59,5 +59,3 @@ npm run start:dev
 | GET | /sessions/entries | Get all entries for authenticated user |
 | DELETE | /sessions/entry/:id | Delete an entry by ID |
 | GET | /sessions/stats | Get daily, weekly, monthly totals |
-
-## Project Structure
