@@ -23,18 +23,9 @@ NestJS REST API backend for the TimeTrackr application.
 npm install
 ```
 
-Create a `.env` file:
 
-```env
-DB_HOST=localhost
-DB_PORT=5432
-DB_USERNAME=postgres
-DB_PASSWORD=your_password
-DB_NAME=timetrackr
-JWT_SECRET=your_secret_key
-JWT_EXPIRES_IN=7d
-PORT=3001
-```
+
+
 
 Create the database:
 
